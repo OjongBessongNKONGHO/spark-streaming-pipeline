@@ -1,0 +1,24 @@
+{
+  "type": "record",
+  "name": "WeatherData",
+  "namespace": "com.ojong.weather",
+  "doc": "Weather data record for Spark Structured Streaming pipeline",
+  "fields": [
+    {"name": "city", "type": "string"},
+    {"name": "country", "type": "string"},
+    {"name": "temperature", "type": "double"},
+    {"name": "feels_like", "type": "double"},
+    {"name": "humidity", "type": "int"},
+    {"name": "pressure", "type": "int"},
+    {"name": "wind_speed", "type": "double"},
+    {"name": "wind_direction", "type": "int"},
+    {"name": "visibility", "type": "int"},
+    {"name": "weather_condition", "type": "string"},
+    {"name": "weather_description", "type": "string"},
+    {"name": "cloudiness", "type": "int"},
+    {"name": "recorded_at", "type": "string"},
+    {"name": "latitude", "type": "double"},
+    {"name": "longitude", "type": "double"},
+    {"name": "schema_version", "type": "string", "default": "1.0"}
+  ]
+}
