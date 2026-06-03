@@ -137,4 +137,4 @@ def test_fetch_all_cities_skips_failed():
     with patch("producer.fetch.requests.get", side_effect=side_effect):
         results = fetch_all_cities()
 
-   assert len(results) == 20
+    assert len(results) == 20
