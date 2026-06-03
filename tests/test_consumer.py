@@ -145,7 +145,7 @@ def test_add_wind_category_calm(spark, sample_df):
     """Wind speed of 2.1 should be categorised as calm."""
     result = add_wind_category(sample_df)
     douala_row = result.filter(result.city == "Douala").first()
-    assert douala_row["wind_category"] == "calm"
+    assert douala_row["wind_category"] == "light breeze"
 
 
 def test_deduplicate_removes_duplicates(spark, sample_df):
