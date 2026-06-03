@@ -2,9 +2,9 @@
 
 ![CI](https://github.com/OjongBessongNKONGHO/spark-streaming-pipeline/actions/workflows/ci.yml/badge.svg)
 
-A production-grade real-time data engineering pipeline built with Apache Spark Structured Streaming. A Kafka producer continuously streams live weather data for 21 cities across 6 continents, Spark consumes and processes it in micro-batches, Delta Lake provides ACID storage with time-travel, dbt transforms the data into analytical models, Airflow orchestrates the workflow, and Terraform provisions the AWS infrastructure.
+A production-grade real-time data engineering pipeline built with Apache Spark Structured Streaming. A Kafka producer streams live weather data for 21 cities across 6 continents into three Kafka topics, Spark processes it in micro-batches and writes to Delta Lake, dbt models the analytical layer, Airflow orchestrates the scheduled jobs, and Terraform provisions the AWS infrastructure.
 
-Built as Project 5 of my Data Engineering portfolio, extending Projects 1 to 4 into a unified modern data stack.
+This is the fifth project in my data engineering portfolio. The first four covered batch ETL, real-time streaming, cloud infrastructure and OLAP analytics. This one brings all four together into a single unified stack.
 
 ## Architecture
 
@@ -73,25 +73,26 @@ spark-streaming-pipeline/
 ├── requirements.txt
 └── .env.example
 ```
+
 ## Key Engineering Decisions
 
-**Why Spark Structured Streaming instead of a plain Python consumer?**
-A plain Python consumer processes one message at a time on a single thread. Spark processes micro-batches in parallel across multiple cores using vectorised execution. For 21 cities polling every 30 seconds, a plain consumer is fine. At 10,000 cities or with complex transformations, only Spark scales. Building with Spark from the start means the architecture does not need to change as the workload grows.
+**Why Spark instead of a plain Python consumer?**
+The Kafka consumer in Project 2 processes one message at a time on a single thread. That works for 12 cities. It breaks at scale. Spark processes micro-batches across multiple cores in parallel. The architecture stays the same whether you have 21 cities or 21,000. I wanted to build something I would not have to redesign later.
 
-**Why Delta Lake instead of writing directly to PostgreSQL?**
-PostgreSQL is optimised for OLTP — fast inserts and single-record lookups. Writing streaming data directly to PostgreSQL works but creates resource contention when analytical queries run at the same time. Delta Lake separates storage from compute. The streaming layer writes Parquet files to S3. The analytical layer reads them independently without affecting write performance. Delta Lake also provides ACID transactions, schema enforcement and time-travel — you can query the data as it existed at any point in the past.
+**Why Delta Lake instead of PostgreSQL?**
+Project 2 wrote directly to PostgreSQL. It worked but analytical queries on the same database competed with writes for resources. Delta Lake separates the two concerns completely. Spark writes Parquet files to S3. The analytical layer reads them independently. Delta Lake also gives you ACID transactions, schema enforcement on write and time-travel queries. You can query the dataset as it existed at any past timestamp. PostgreSQL cannot do that without significant engineering.
 
 **Why three Kafka topics instead of one?**
-In Project 2 every message went to one topic and failures went to a DLQ database table. Three topics gives more flexibility. The raw topic receives every message before validation — useful for debugging and auditing. The validated topic receives only clean messages — Spark reads from here. The invalid topic receives failed messages — a separate consumer can reprocess them without touching the main pipeline. Each topic can have independent consumers, retention policies and partition counts.
+Project 2 had one topic and a dead letter queue table in PostgreSQL for failures. The problem is that routing decisions and storage decisions end up tangled together. Three topics gives each message type its own lane. Raw gets everything before validation, useful for auditing and debugging. Validated gets only clean messages, Spark reads only from here. Invalid gets failed messages, a separate process can reprocess them without touching the main pipeline at all.
 
 **Why Avro instead of JSON?**
-JSON is human-readable but wasteful. Every message carries field names as strings repeated for every record. Avro uses a binary format with the schema stored separately in the Schema Registry. A JSON weather record is approximately 400 bytes. The same record in Avro is approximately 80 bytes — 5x smaller. At scale, smaller messages mean lower Kafka storage costs, higher throughput and faster network transfer.
+I used JSON in Projects 1 and 2 because it is simple. The problem with JSON at scale is that field names travel with every message. City, temperature, humidity, repeated for every single record. Avro stores the schema once in the Schema Registry and replaces field names with integer IDs in the message. A JSON weather record is around 400 bytes. The same record in Avro is around 80 bytes. 80 percent smaller means lower storage costs, higher throughput and less network load for no change in the data itself.
 
-**Why dbt on top of Spark?**
-Spark handles the heavy lifting — reading streams, applying transformations, writing to Delta Lake. dbt handles the analytical modelling layer — taking the raw Delta Lake tables and building clean, documented, tested models that business users can query. Spark transformations are Python code. dbt transformations are SQL with built-in lineage, documentation and data testing. In real data teams these are two separate concerns owned by different people.
+**Why dbt for transformations?**
+Spark transformations are Python. They work but they are hard to document, test and share with non-engineers. dbt transformations are SQL files with built-in lineage tracking, column-level documentation and data tests. When another engineer picks this up, they can read a dbt model and understand exactly what it does without reading Python. The Spark layer moves data. The dbt layer explains it.
 
-**Why Airflow for orchestration?**
-The streaming consumer runs continuously without scheduling. The batch analysis jobs need to run on a schedule — every hour, compute the latest aggregations. Airflow provides dependency management, retry logic, monitoring and alerting for those scheduled jobs. It also integrates with the ETL pipeline from Project 1, meaning a single Airflow deployment could orchestrate both batch and streaming workloads.
+**Why Airflow?**
+The streaming consumer runs continuously, no scheduling needed. But the batch analysis jobs need to run on a schedule and they have dependencies. The quality check must run after the batch analysis. The Kafka health check must run before both. Airflow manages those dependencies with retries and alerting. It also means a single Airflow deployment can orchestrate both this pipeline and the ETL pipeline from Project 1.
 
 ## Pipeline Metrics
 
@@ -100,10 +101,10 @@ The streaming consumer runs continuously without scheduling. The batch analysis 
 | Cities tracked | 21 across 6 continents |
 | Kafka topics | 3 (raw, validated, invalid) |
 | Spark micro-batch interval | 30 seconds |
-| Delta Lake storage | ACID with time-travel |
-| Airflow schedule | Hourly |
+| Delta Lake storage format | Parquet with Snappy compression |
+| Test coverage | 79% |
 | Unit tests | 39 across 4 files |
-| CI status | GitHub Actions passing |
+| Average CI run time | 49 seconds |
 
 ## How to Run
 
@@ -125,12 +126,14 @@ Monitor the pipeline:
 
 ## Status
 
-In active development — June 2026
+In active development, June 2026
+
+Next milestones: dbt staging models, Terraform module implementation and AWS deployment.
 
 ## Author
 
 Ojong Bessong NKONGHO
-Data Engineering Student — DSTI School of Engineering, Paris
+Data Engineering Student, DSTI School of Engineering, Paris
 Seeking Data Engineering internship (July 2026) and apprenticeship (September 2026)
 
 LinkedIn: linkedin.com/in/nkongho-ojong
