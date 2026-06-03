@@ -40,6 +40,7 @@ flowchart LR
 | Language | Python 3.11 | Pipeline logic |
 
 ## Project Structure
+```
 spark-streaming-pipeline/
 ├── producer/               # Kafka producer
 │   ├── schema.py           # Pydantic v2 + Avro models
@@ -71,6 +72,7 @@ spark-streaming-pipeline/
 ├── Makefile
 ├── requirements.txt
 └── .env.example
+```
 ## Key Engineering Decisions
 
 **Why Spark Structured Streaming instead of a plain Python consumer?**
