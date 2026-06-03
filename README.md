@@ -64,12 +64,32 @@ spark-streaming-pipeline/
 ├── tests/                  # 39 pytest unit tests
 ├── config/config.yaml      # Central configuration
 ├── scripts/                # Kafka topics and DB initialisation
+├── docs/                   # Architecture diagrams
 ├── docker-compose.yml      # Full stack local setup
 ├── Dockerfile.producer
 ├── Dockerfile.consumer
 ├── Makefile
 ├── requirements.txt
 └── .env.example
+## Key Engineering Decisions
+
+**Why Spark Structured Streaming instead of a plain Python consumer?**
+A plain Python consumer processes one message at a time on a single thread. Spark processes micro-batches in parallel across multiple cores using vectorised execution. For 21 cities polling every 30 seconds, a plain consumer is fine. At 10,000 cities or with complex transformations, only Spark scales. Building with Spark from the start means the architecture does not need to change as the workload grows.
+
+**Why Delta Lake instead of writing directly to PostgreSQL?**
+PostgreSQL is optimised for OLTP — fast inserts and single-record lookups. Writing streaming data directly to PostgreSQL works but creates resource contention when analytical queries run at the same time. Delta Lake separates storage from compute. The streaming layer writes Parquet files to S3. The analytical layer reads them independently without affecting write performance. Delta Lake also provides ACID transactions, schema enforcement and time-travel — you can query the data as it existed at any point in the past.
+
+**Why three Kafka topics instead of one?**
+In Project 2 every message went to one topic and failures went to a DLQ database table. Three topics gives more flexibility. The raw topic receives every message before validation — useful for debugging and auditing. The validated topic receives only clean messages — Spark reads from here. The invalid topic receives failed messages — a separate consumer can reprocess them without touching the main pipeline. Each topic can have independent consumers, retention policies and partition counts.
+
+**Why Avro instead of JSON?**
+JSON is human-readable but wasteful. Every message carries field names as strings repeated for every record. Avro uses a binary format with the schema stored separately in the Schema Registry. A JSON weather record is approximately 400 bytes. The same record in Avro is approximately 80 bytes — 5x smaller. At scale, smaller messages mean lower Kafka storage costs, higher throughput and faster network transfer.
+
+**Why dbt on top of Spark?**
+Spark handles the heavy lifting — reading streams, applying transformations, writing to Delta Lake. dbt handles the analytical modelling layer — taking the raw Delta Lake tables and building clean, documented, tested models that business users can query. Spark transformations are Python code. dbt transformations are SQL with built-in lineage, documentation and data testing. In real data teams these are two separate concerns owned by different people.
+
+**Why Airflow for orchestration?**
+The streaming consumer runs continuously without scheduling. The batch analysis jobs need to run on a schedule — every hour, compute the latest aggregations. Airflow provides dependency management, retry logic, monitoring and alerting for those scheduled jobs. It also integrates with the ETL pipeline from Project 1, meaning a single Airflow deployment could orchestrate both batch and streaming workloads.
 
 ## Pipeline Metrics
 
