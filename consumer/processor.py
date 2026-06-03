@@ -6,8 +6,12 @@ to each micro-batch before it lands in Delta Lake.
 
 from pyspark.sql import DataFrame
 from pyspark.sql.functions import (
-    col, when, round as spark_round,
-    current_timestamp, lit, expr
+    col,
+    when,
+    round as spark_round,
+    current_timestamp,
+    lit,
+    expr,
 )
 
 
@@ -19,7 +23,7 @@ def add_temperature_category(df: DataFrame) -> DataFrame:
         .when(col("temperature") < 10, "cold")
         .when(col("temperature") < 20, "mild")
         .when(col("temperature") < 30, "warm")
-        .otherwise("hot")
+        .otherwise("hot"),
     )
 
 
@@ -28,9 +32,8 @@ def add_heat_index(df: DataFrame) -> DataFrame:
     return df.withColumn(
         "heat_index",
         spark_round(
-            col("temperature") + (0.33 * col("humidity") / 100 * 6.105) - 4.0,
-            2
-        )
+            col("temperature") + (0.33 * col("humidity") / 100 * 6.105) - 4.0, 2
+        ),
     )
 
 
@@ -43,16 +46,14 @@ def add_wind_category(df: DataFrame) -> DataFrame:
         .when(col("wind_speed") < 10.7, "gentle breeze")
         .when(col("wind_speed") < 17.1, "moderate breeze")
         .when(col("wind_speed") < 24.5, "fresh breeze")
-        .otherwise("strong wind")
+        .otherwise("strong wind"),
     )
 
 
 def add_processing_metadata(df: DataFrame) -> DataFrame:
     """Adds processed_at timestamp and pipeline version for lineage tracking."""
-    return (
-        df
-        .withColumn("processed_at", current_timestamp())
-        .withColumn("pipeline_version", lit("1.0.0"))
+    return df.withColumn("processed_at", current_timestamp()).withColumn(
+        "pipeline_version", lit("1.0.0")
     )
 
 
@@ -66,8 +67,7 @@ def transform_batch(df: DataFrame) -> DataFrame:
     """Applies all transformations in sequence to a micro-batch DataFrame.
     Called once per micro-batch by the Spark streaming query."""
     return (
-        df
-        .transform(deduplicate)
+        df.transform(deduplicate)
         .transform(add_temperature_category)
         .transform(add_heat_index)
         .transform(add_wind_category)

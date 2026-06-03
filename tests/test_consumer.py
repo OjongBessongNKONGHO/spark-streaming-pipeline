@@ -6,8 +6,12 @@ Uses a local Spark session so no cluster is needed.
 import pytest
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
-    StructType, StructField, StringType,
-    FloatType, IntegerType, TimestampType
+    StructType,
+    StructField,
+    StringType,
+    FloatType,
+    IntegerType,
+    TimestampType,
 )
 from datetime import datetime, timezone
 from consumer.processor import (
@@ -23,8 +27,7 @@ from consumer.processor import (
 def spark():
     """Creates a local Spark session for testing."""
     return (
-        SparkSession.builder
-        .appName("TestWeatherProcessor")
+        SparkSession.builder.appName("TestWeatherProcessor")
         .master("local[1]")
         .config("spark.sql.shuffle.partitions", "1")
         .getOrCreate()
@@ -34,34 +37,78 @@ def spark():
 @pytest.fixture
 def sample_df(spark):
     """Creates a sample DataFrame with two weather records for testing."""
-    schema = StructType([
-        StructField("city", StringType(), False),
-        StructField("country", StringType(), False),
-        StructField("temperature", FloatType(), False),
-        StructField("feels_like", FloatType(), False),
-        StructField("humidity", IntegerType(), False),
-        StructField("pressure", IntegerType(), False),
-        StructField("wind_speed", FloatType(), False),
-        StructField("wind_direction", IntegerType(), True),
-        StructField("visibility", IntegerType(), True),
-        StructField("weather_condition", StringType(), False),
-        StructField("weather_description", StringType(), False),
-        StructField("cloudiness", IntegerType(), False),
-        StructField("recorded_at", StringType(), False),
-        StructField("latitude", FloatType(), False),
-        StructField("longitude", FloatType(), False),
-    ])
+    schema = StructType(
+        [
+            StructField("city", StringType(), False),
+            StructField("country", StringType(), False),
+            StructField("temperature", FloatType(), False),
+            StructField("feels_like", FloatType(), False),
+            StructField("humidity", IntegerType(), False),
+            StructField("pressure", IntegerType(), False),
+            StructField("wind_speed", FloatType(), False),
+            StructField("wind_direction", IntegerType(), True),
+            StructField("visibility", IntegerType(), True),
+            StructField("weather_condition", StringType(), False),
+            StructField("weather_description", StringType(), False),
+            StructField("cloudiness", IntegerType(), False),
+            StructField("recorded_at", StringType(), False),
+            StructField("latitude", FloatType(), False),
+            StructField("longitude", FloatType(), False),
+        ]
+    )
 
     data = [
-        ("Paris", "FR", 23.5, 22.1, 65, 1013, 5.2, 180,
-         10000, "Clear", "clear sky", 10,
-         "2026-06-02T12:00:00+00:00", 48.8566, 2.3522),
-        ("Douala", "CM", 36.0, 40.0, 85, 1008, 2.1, 90,
-         8000, "Thunderstorm", "thunderstorm", 80,
-         "2026-06-02T12:00:00+00:00", 4.0511, 9.7679),
-        ("Paris", "FR", 23.5, 22.1, 65, 1013, 5.2, 180,
-         10000, "Clear", "clear sky", 10,
-         "2026-06-02T12:00:00+00:00", 48.8566, 2.3522),
+        (
+            "Paris",
+            "FR",
+            23.5,
+            22.1,
+            65,
+            1013,
+            5.2,
+            180,
+            10000,
+            "Clear",
+            "clear sky",
+            10,
+            "2026-06-02T12:00:00+00:00",
+            48.8566,
+            2.3522,
+        ),
+        (
+            "Douala",
+            "CM",
+            36.0,
+            40.0,
+            85,
+            1008,
+            2.1,
+            90,
+            8000,
+            "Thunderstorm",
+            "thunderstorm",
+            80,
+            "2026-06-02T12:00:00+00:00",
+            4.0511,
+            9.7679,
+        ),
+        (
+            "Paris",
+            "FR",
+            23.5,
+            22.1,
+            65,
+            1013,
+            5.2,
+            180,
+            10000,
+            "Clear",
+            "clear sky",
+            10,
+            "2026-06-02T12:00:00+00:00",
+            48.8566,
+            2.3522,
+        ),
     ]
 
     return spark.createDataFrame(data, schema)
@@ -115,7 +162,7 @@ def test_transform_batch_adds_all_columns(spark, sample_df):
         "heat_index",
         "wind_category",
         "processed_at",
-        "pipeline_version"
+        "pipeline_version",
     ]
     for col in expected_columns:
         assert col in result.columns, f"Missing column: {col}"

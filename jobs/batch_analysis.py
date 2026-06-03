@@ -7,8 +7,15 @@ Triggered by Airflow on a scheduled basis.
 
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
-    avg, max, min, stddev, count, col,
-    round as spark_round, rank, desc
+    avg,
+    max,
+    min,
+    stddev,
+    count,
+    col,
+    round as spark_round,
+    rank,
+    desc,
 )
 from pyspark.sql.window import Window
 import os
@@ -20,12 +27,11 @@ ANALYTICS_PATH = os.getenv("ANALYTICS_PATH", "s3a://your-bucket/delta/analytics"
 def create_spark_session() -> SparkSession:
     """Creates and returns a Spark session for batch analysis."""
     return (
-        SparkSession.builder
-        .appName("WeatherBatchAnalysis")
+        SparkSession.builder.appName("WeatherBatchAnalysis")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog",
-            "org.apache.spark.sql.delta.catalog.DeltaCatalog"
+            "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
         .getOrCreate()
     )
@@ -37,7 +43,7 @@ def average_temperature_by_city(df: DataFrame) -> DataFrame:
         spark_round(avg("temperature"), 2).alias("avg_temperature"),
         spark_round(max("temperature"), 2).alias("max_temperature"),
         spark_round(min("temperature"), 2).alias("min_temperature"),
-        count("*").alias("record_count")
+        count("*").alias("record_count"),
     )
 
 
@@ -53,7 +59,7 @@ def humidity_trends(df: DataFrame) -> DataFrame:
     return df.groupBy("city", "country").agg(
         spark_round(avg("humidity"), 2).alias("avg_humidity"),
         spark_round(max("humidity"), 2).alias("max_humidity"),
-        spark_round(min("humidity"), 2).alias("min_humidity")
+        spark_round(min("humidity"), 2).alias("min_humidity"),
     )
 
 
@@ -62,15 +68,17 @@ def wind_distribution(df: DataFrame) -> DataFrame:
     return df.groupBy("city", "country", "wind_category").agg(
         spark_round(avg("wind_speed"), 2).alias("avg_wind_speed"),
         spark_round(max("wind_speed"), 2).alias("max_wind_speed"),
-        count("*").alias("occurrence_count")
+        count("*").alias("occurrence_count"),
     )
 
 
 def condition_frequency(df: DataFrame) -> DataFrame:
     """Counts how often each weather condition occurs per city."""
-    return df.groupBy("city", "country", "weather_condition").agg(
-        count("*").alias("occurrence_count")
-    ).orderBy("city", desc("occurrence_count"))
+    return (
+        df.groupBy("city", "country", "weather_condition")
+        .agg(count("*").alias("occurrence_count"))
+        .orderBy("city", desc("occurrence_count"))
+    )
 
 
 def temperature_humidity_correlation(df: DataFrame) -> DataFrame:
@@ -79,7 +87,7 @@ def temperature_humidity_correlation(df: DataFrame) -> DataFrame:
     return df.groupBy("city", "country").agg(
         spark_round(avg("heat_index"), 2).alias("avg_heat_index"),
         spark_round(avg("temperature"), 2).alias("avg_temperature"),
-        spark_round(avg("humidity"), 2).alias("avg_humidity")
+        spark_round(avg("humidity"), 2).alias("avg_humidity"),
     )
 
 
@@ -87,7 +95,7 @@ def daily_temperature_range(df: DataFrame) -> DataFrame:
     """Computes daily temperature range (max minus min) per city."""
     return df.groupBy("city", "country", "year", "month", "day").agg(
         spark_round(max("temperature") - min("temperature"), 2).alias("daily_range"),
-        spark_round(avg("temperature"), 2).alias("avg_temperature")
+        spark_round(avg("temperature"), 2).alias("avg_temperature"),
     )
 
 
@@ -96,7 +104,7 @@ def anomaly_detection(df: DataFrame) -> DataFrame:
     deviations from the city mean — statistical z-score approach."""
     city_stats = df.groupBy("city").agg(
         avg("temperature").alias("mean_temp"),
-        stddev("temperature").alias("stddev_temp")
+        stddev("temperature").alias("stddev_temp"),
     )
 
     return (
@@ -104,15 +112,11 @@ def anomaly_detection(df: DataFrame) -> DataFrame:
         .withColumn(
             "z_score",
             spark_round(
-                (col("temperature") - col("mean_temp")) / col("stddev_temp"),
-                2
-            )
+                (col("temperature") - col("mean_temp")) / col("stddev_temp"), 2
+            ),
         )
         .filter(col("z_score").isNotNull())
-        .withColumn(
-            "is_anomaly",
-            (col("z_score") > 2.0) | (col("z_score") < -2.0)
-        )
+        .withColumn("is_anomaly", (col("z_score") > 2.0) | (col("z_score") < -2.0))
         .filter(col("is_anomaly"))
         .select("city", "country", "temperature", "recorded_at", "z_score")
     )
@@ -120,12 +124,7 @@ def anomaly_detection(df: DataFrame) -> DataFrame:
 
 def write_analytics(df: DataFrame, table_name: str) -> None:
     """Writes an analytical DataFrame to Delta Lake as a named table."""
-    (
-        df.write
-        .format("delta")
-        .mode("overwrite")
-        .save(f"{ANALYTICS_PATH}/{table_name}")
-    )
+    (df.write.format("delta").mode("overwrite").save(f"{ANALYTICS_PATH}/{table_name}"))
 
 
 def run():

@@ -39,9 +39,10 @@ def test_valid_record_sent_to_raw_topic():
     mock_producer = MagicMock()
     process_record(mock_producer, VALID_RECORD)
 
-    calls = [call[1]["topic"] if "topic" in call[1]
-              else call[0][0]
-              for call in mock_producer.send.call_args_list]
+    calls = [
+        call[1]["topic"] if "topic" in call[1] else call[0][0]
+        for call in mock_producer.send.call_args_list
+    ]
 
     assert mock_producer.send.called
 
@@ -51,9 +52,7 @@ def test_valid_record_sent_to_validated_topic():
     mock_producer = MagicMock()
     process_record(mock_producer, VALID_RECORD)
 
-    topics_sent = [
-        call[0][0] for call in mock_producer.send.call_args_list
-    ]
+    topics_sent = [call[0][0] for call in mock_producer.send.call_args_list]
 
     assert "validated_weather_stream" in topics_sent
 
@@ -63,9 +62,7 @@ def test_invalid_record_sent_to_invalid_topic():
     mock_producer = MagicMock()
     process_record(mock_producer, INVALID_RECORD)
 
-    topics_sent = [
-        call[0][0] for call in mock_producer.send.call_args_list
-    ]
+    topics_sent = [call[0][0] for call in mock_producer.send.call_args_list]
 
     assert "invalid_weather_stream" in topics_sent
 
@@ -75,9 +72,7 @@ def test_invalid_record_not_sent_to_validated_topic():
     mock_producer = MagicMock()
     process_record(mock_producer, INVALID_RECORD)
 
-    topics_sent = [
-        call[0][0] for call in mock_producer.send.call_args_list
-    ]
+    topics_sent = [call[0][0] for call in mock_producer.send.call_args_list]
 
     assert "validated_weather_stream" not in topics_sent
 
@@ -102,9 +97,7 @@ def test_process_record_sends_city_as_key():
     mock_producer = MagicMock()
     process_record(mock_producer, VALID_RECORD)
 
-    keys_used = [
-        call[1].get("key") for call in mock_producer.send.call_args_list
-    ]
+    keys_used = [call[1].get("key") for call in mock_producer.send.call_args_list]
 
     assert "Paris" in keys_used
 

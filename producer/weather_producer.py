@@ -50,18 +50,14 @@ def process_record(producer: KafkaProducer, raw: dict) -> None:
     validated or invalid topic depending on Pydantic result."""
     city = raw.get("city", "unknown")
 
-    producer.send(
-        KAFKA_CONFIG["raw_topic"],
-        key=city,
-        value=raw
-    )
+    producer.send(KAFKA_CONFIG["raw_topic"], key=city, value=raw)
 
     try:
         validated = WeatherData(**raw)
         producer.send(
             KAFKA_CONFIG["validated_topic"],
             key=city,
-            value=validated.model_dump(mode="json")
+            value=validated.model_dump(mode="json"),
         )
         logger.info(f"Validated and sent: {city} {validated.temperature}C")
 
@@ -69,7 +65,7 @@ def process_record(producer: KafkaProducer, raw: dict) -> None:
         producer.send(
             KAFKA_CONFIG["invalid_topic"],
             key=city,
-            value={"raw": raw, "errors": e.errors()}
+            value={"raw": raw, "errors": e.errors()},
         )
         logger.warning(f"Validation failed for {city}: {e.error_count()} errors")
 
@@ -90,7 +86,9 @@ def run():
                 process_record(producer, record)
 
             producer.flush()
-            logger.info(f"Cycle complete. Sleeping {API_CONFIG['poll_interval_seconds']}s")
+            logger.info(
+                f"Cycle complete. Sleeping {API_CONFIG['poll_interval_seconds']}s"
+            )
             time.sleep(API_CONFIG["poll_interval_seconds"])
 
     finally:

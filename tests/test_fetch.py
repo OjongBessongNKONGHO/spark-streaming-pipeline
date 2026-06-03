@@ -24,12 +24,7 @@ MOCK_API_RESPONSE = {
     "dt": 1700000000,
 }
 
-MOCK_CITY = {
-    "name": "Paris",
-    "country": "FR",
-    "lat": 48.8566,
-    "lon": 2.3522
-}
+MOCK_CITY = {"name": "Paris", "country": "FR", "lat": 48.8566, "lon": 2.3522}
 
 
 def test_fetch_weather_success():
@@ -59,10 +54,21 @@ def test_fetch_weather_returns_correct_fields():
         result = fetch_weather(MOCK_CITY)
 
     required_fields = [
-        "city", "country", "temperature", "feels_like", "humidity",
-        "pressure", "wind_speed", "wind_direction", "visibility",
-        "weather_condition", "weather_description", "cloudiness",
-        "recorded_at", "latitude", "longitude"
+        "city",
+        "country",
+        "temperature",
+        "feels_like",
+        "humidity",
+        "pressure",
+        "wind_speed",
+        "wind_direction",
+        "visibility",
+        "weather_condition",
+        "weather_description",
+        "cloudiness",
+        "recorded_at",
+        "latitude",
+        "longitude",
     ]
     for field in required_fields:
         assert field in result, f"Missing field: {field}"

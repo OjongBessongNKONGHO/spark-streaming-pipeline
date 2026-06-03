@@ -19,7 +19,7 @@ def fetch_weather(city: dict) -> dict | None:
             response = requests.get(
                 API_CONFIG["base_url"],
                 params=params,
-                timeout=API_CONFIG["timeout_seconds"]
+                timeout=API_CONFIG["timeout_seconds"],
             )
             response.raise_for_status()
             data = response.json()
@@ -45,9 +45,7 @@ def fetch_weather(city: dict) -> dict | None:
             }
 
         except requests.exceptions.Timeout:
-            logger.warning(
-                f"Timeout fetching {city['name']} attempt {attempt}"
-            )
+            logger.warning(f"Timeout fetching {city['name']} attempt {attempt}")
         except requests.exceptions.HTTPError as e:
             logger.error(f"HTTP error fetching {city['name']}: {e}")
             return None
@@ -55,9 +53,7 @@ def fetch_weather(city: dict) -> dict | None:
             logger.error(f"Unexpected error fetching {city['name']}: {e}")
             return None
 
-    logger.error(
-        f"All {API_CONFIG['max_retries']} attempts failed for {city['name']}"
-    )
+    logger.error(f"All {API_CONFIG['max_retries']} attempts failed for {city['name']}")
     return None
 
 
