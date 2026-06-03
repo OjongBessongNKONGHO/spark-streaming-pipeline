@@ -12,7 +12,7 @@ KAFKA_CONFIG = {
     "acks": "all",
     "retries": 3,
     "retry_backoff_ms": 500,
-    "compression_type": "snappy",
+    "compression_type": "gzip",
     "linger_ms": 10,
     "batch_size": 16384,
 }

@@ -119,32 +119,5 @@ services:
       - ./logs:/app/logs
     restart: unless-stopped
 
-  consumer:
-    build:
-      context: .
-      dockerfile: Dockerfile.consumer
-    container_name: weather_consumer_spark
-    depends_on:
-      kafka:
-        condition: service_healthy
-      schema-registry:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-      init-topics:
-        condition: service_completed_successfully
-    env_file:
-      - .env
-    environment:
-      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
-      SCHEMA_REGISTRY_URL: http://schema-registry:8081
-      DELTA_LAKE_PATH: /app/data/delta/weather
-      CHECKPOINT_PATH: /app/data/checkpoints/weather
-      ANALYTICS_PATH: /app/data/delta/analytics
-    volumes:
-      - ./logs:/app/logs
-      - ./data:/app/data
-    restart: unless-stopped
-
 volumes:
   postgres_data:
