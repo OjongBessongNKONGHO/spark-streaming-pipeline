@@ -106,6 +106,30 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 | Unit tests | 39 across 4 files |
 | Average CI run time | 49 seconds |
 
+
+## Pipeline Screenshots
+
+### Kafka UI Dashboard
+![Kafka UI Dashboard](docs/images/kafka-ui-dashboard.png)
+*1 cluster online — weather-streaming — Kafka 3.5-IV2 — 5 topics — 58 partitions*
+
+### Broker Health
+![Broker Health](docs/images/kafka-broker-health.png)
+*1 broker healthy — 58/58 partitions in sync — 0 out-of-sync replicas*
+
+### Topics Overview
+![Topics Overview](docs/images/kafka-topics-overview.png)
+*raw_weather_stream and validated_weather_stream — 105 messages each — invalid_weather_stream 0 messages*
+
+### Validated Messages
+![Validated Messages](docs/images/kafka-validated-messages.png)
+*210 messages consumed — all 21 cities with real temperature data — 0 validation failures*
+
+### Producer Logs
+![Producer Logs](docs/images/docker-producer-logs.png)
+*All 21 cities fetched successfully — 21 records per cycle — producer running in Docker*
+
+
 ## How to Run
 
 Prerequisites: Docker Desktop and OpenWeatherMap API key
