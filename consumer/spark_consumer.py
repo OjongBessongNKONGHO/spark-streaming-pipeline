@@ -28,9 +28,8 @@ from consumer.processor import transform_batch
 from producer.config import KAFKA_CONFIG
 import os
 
-
-DELTA_PATH = os.getenv("DELTA_LAKE_PATH", "s3a://your-bucket/delta/weather")
-CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "s3a://your-bucket/checkpoints/weather")
+DELTA_PATH = os.getenv("DELTA_LAKE_PATH", "/tmp/delta/weather")
+CHECKPOINT_PATH = os.getenv("CHECKPOINT_PATH", "/tmp/checkpoints/weather")
 
 
 WEATHER_SCHEMA = StructType(
@@ -57,21 +56,27 @@ WEATHER_SCHEMA = StructType(
 
 def create_spark_session() -> SparkSession:
     """Creates and returns a Spark session configured for
-    Kafka streaming and Delta Lake on S3."""
-    return (
+    Kafka streaming. Uses S3 config in production,
+    local storage in development."""
+    builder = (
         SparkSession.builder.appName("WeatherStreamingPipeline")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
-        .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config(
+    )
+
+    if DELTA_PATH.startswith("s3a://"):
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.impl",
+            "org.apache.hadoop.fs.s3a.S3AFileSystem"
+        ).config(
             "spark.hadoop.fs.s3a.aws.credentials.provider",
             "com.amazonaws.auth.InstanceProfileCredentialsProvider",
         )
-        .getOrCreate()
-    )
+
+    return builder.getOrCreate()
 
 
 def read_kafka_stream(spark: SparkSession):

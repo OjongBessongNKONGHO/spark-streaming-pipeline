@@ -129,6 +129,22 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 ![Producer Logs](docs/images/docker-producer-logs.png)
 *All 21 cities fetched successfully — 21 records per cycle — producer running in Docker*
 
+### Full Pipeline — Producer and Consumer Running
+![All Containers Running](docs/images/docker-all-containers-running.png)
+*All 10 containers running — producer and Spark consumer both active*
+
+### Docker Desktop — Consumer Running
+![Consumer Running](docs/images/docker-consumer-running.png)
+*weather_consumer_spark running alongside all pipeline services*
+
+### Kafka Topics — 294 Messages
+![Topics 294 Messages](docs/images/kafka-topics-294-messages.png)
+*raw_weather_stream and validated_weather_stream — 294 messages each — consumer processing live*
+
+### Spark Consumer — Messages Consumed
+![Spark Consumer Messages](docs/images/spark-consumer-messages.png)
+*102 messages consumed by Spark Structured Streaming — all 21 cities — Delta Lake writing to /tmp/delta/weather*
+
 
 ## How to Run
 

@@ -2,12 +2,6 @@
 -- Creates weather_events table, pipeline_runs metadata table
 -- and indexes for fast querying
 
-CREATE DATABASE IF NOT EXISTS weather_streaming;
-
-\c weather_streaming;
-
-CREATE USER IF NOT EXISTS streaming_user WITH PASSWORD 'streaming_password';
-
 -- Main weather events table storing transformed Spark output
 CREATE TABLE IF NOT EXISTS weather_events (
     id                   SERIAL PRIMARY KEY,
@@ -52,16 +46,12 @@ CREATE TABLE IF NOT EXISTS pipeline_runs (
 -- Indexes for fast city and time-range queries
 CREATE INDEX IF NOT EXISTS idx_weather_city
     ON weather_events (city);
-
 CREATE INDEX IF NOT EXISTS idx_weather_recorded_at
     ON weather_events (recorded_at DESC);
-
 CREATE INDEX IF NOT EXISTS idx_weather_city_recorded_at
     ON weather_events (city, recorded_at DESC);
-
 CREATE INDEX IF NOT EXISTS idx_weather_condition
     ON weather_events (weather_condition);
-
 CREATE INDEX IF NOT EXISTS idx_pipeline_runs_status
     ON pipeline_runs (status);
 

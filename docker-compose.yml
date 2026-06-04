@@ -119,5 +119,29 @@ services:
       - ./logs:/app/logs
     restart: unless-stopped
 
+  consumer:
+    build:
+      context: .
+      dockerfile: Dockerfile.consumer
+    container_name: weather_consumer_spark
+    depends_on:
+      kafka:
+        condition: service_healthy
+      schema-registry:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+    environment:
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      SCHEMA_REGISTRY_URL: http://schema-registry:8081
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: weather_streaming
+      POSTGRES_USER: streaming_user
+      POSTGRES_PASSWORD: streaming_password
+    volumes:
+      - ./logs:/app/logs
+    restart: unless-stopped
+
 volumes:
   postgres_data:
