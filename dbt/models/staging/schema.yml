@@ -1,0 +1,51 @@
+version: 2
+
+sources:
+  - name: delta_lake
+    description: Raw weather events written by Spark Structured Streaming to Delta Lake
+    tables:
+      - name: weather_events
+        description: Raw weather records — one row per city per 30-second cycle
+        columns:
+          - name: city
+            description: City name from OpenWeatherMap API
+          - name: temperature
+            description: Air temperature in Celsius
+          - name: recorded_at
+            description: Timestamp when the weather was recorded
+
+models:
+  - name: stg_weather_events
+    description: >
+      Cleaned and standardised weather events from Delta Lake.
+      Adds derived fields for temperature category and wind category.
+      Filters out records with null temperature, humidity, city or timestamp.
+    columns:
+      - name: city
+        description: City name
+        tests:
+          - not_null
+      - name: temperature_c
+        description: Air temperature in Celsius rounded to 2 decimal places
+        tests:
+          - not_null
+      - name: humidity_pct
+        description: Relative humidity percentage
+        tests:
+          - not_null
+      - name: temperature_category
+        description: Derived temperature band — freezing, cold, mild, warm, hot
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['freezing', 'cold', 'mild', 'warm', 'hot']
+      - name: wind_category
+        description: Derived wind strength category
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['calm', 'light_breeze', 'moderate', 'strong']
+      - name: recorded_at
+        description: Timestamp when the weather was recorded
+        tests:
+          - not_null

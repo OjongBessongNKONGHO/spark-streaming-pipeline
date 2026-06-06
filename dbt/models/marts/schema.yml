@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: mart_city_weather_summary
+    description: >
+      Daily weather summary per city aggregated from stg_weather_events.
+      One row per city per day. Pre-computed as a table for fast dashboard queries.
+    columns:
+      - name: city
+        description: City name
+        tests:
+          - not_null
+      - name: country
+        description: Country code
+        tests:
+          - not_null
+      - name: recorded_date
+        description: The date this summary covers
+        tests:
+          - not_null
+      - name: avg_temperature_c
+        description: Average temperature in Celsius for the day
+        tests:
+          - not_null
+      - name: record_count
+        description: Number of weather records collected that day
+        tests:
+          - not_null
