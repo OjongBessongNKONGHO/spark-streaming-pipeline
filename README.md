@@ -168,7 +168,7 @@ Monitor the pipeline:
 
 In active development, June 2026
 
-Next milestones: dbt staging models, Terraform module implementation and AWS deployment.
+Next milestones: Terraform module implementation and AWS deployment.
 
 ## Author
 
