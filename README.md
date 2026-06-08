@@ -1,10 +1,129 @@
 ﻿# Spark Structured Streaming Pipeline
 
 ![CI](https://github.com/OjongBessongNKONGHO/spark-streaming-pipeline/actions/workflows/ci.yml/badge.svg)
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)
+![Spark](https://img.shields.io/badge/Apache%20Spark-3.5-E25A1C?style=flat&logo=apache-spark)
+![Kafka](https://img.shields.io/badge/Apache%20Kafka-3.5-231F20?style=flat&logo=apache-kafka)
+![Delta Lake](https://img.shields.io/badge/Delta%20Lake-3.0-003366?style=flat)
+![dbt](https://img.shields.io/badge/dbt-1.7-FF694B?style=flat&logo=dbt)
+![Terraform](https://img.shields.io/badge/Terraform-1.15-7B42BC?style=flat&logo=terraform)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker)
+![Status](https://img.shields.io/badge/Status-Active-success?style=flat)
+
 
 A production-grade real-time data engineering pipeline built with Apache Spark Structured Streaming. A Kafka producer streams live weather data for 21 cities across 6 continents into three Kafka topics, Spark processes it in micro-batches and writes to Delta Lake, dbt models the analytical layer, Airflow orchestrates the scheduled jobs, and Terraform provisions the AWS infrastructure.
 
 This is the fifth project in my data engineering portfolio. The first four covered batch ETL, real-time streaming, cloud infrastructure and OLAP analytics. This one brings all four together into a single unified stack.
+
+## ✨ Key Features
+
+- **Production-grade Spark Structured Streaming** — micro-batch processing every 30 seconds with watermarking for late data handling and checkpointing for fault tolerance and exactly-once delivery semantics
+
+- **Three-topic Kafka architecture** — raw, validated and invalid streams give each message type its own dedicated lane, cleanly separating ingestion, validation and error handling without tangling routing and storage decisions
+
+- **Avro + Confluent Schema Registry** — binary serialisation with schema evolution support — Avro weather records are 80% smaller than JSON equivalents, reducing storage costs, network load and throughput overhead at no cost to data fidelity
+
+- **Delta Lake on S3** — ACID transactions, schema enforcement on write, time-travel queries and partitioning by year, month, day and hour for fast time-range scans — query the dataset as it existed at any past timestamp
+
+- **dbt analytical layer** — staging model cleans and standardises raw weather events, mart model aggregates daily city summaries — SQL transformations with built-in lineage tracking, column-level documentation and data quality tests
+
+- **Pydantic v2 schema validation** — every weather record validated against a strict schema before entering Kafka — invalid records automatically routed to the invalid stream for investigation without blocking the main pipeline
+
+- **Exponential backoff retry** — API fetch retries up to 3 times with increasing delay before skipping a city — prevents transient network failures from causing data gaps
+
+- **Kafka offset tracking** — every Delta Lake record linked to its exact Kafka partition and offset — full end-to-end message traceability from API call to storage
+
+- **21 cities across 6 continents** — Paris, London, Berlin, Amsterdam, Madrid, New York, Toronto, Mexico City, São Paulo, Buenos Aires, Douala, Lagos, Nairobi, Cairo, Johannesburg, Tokyo, Mumbai, Dubai, Singapore, Seoul, Sydney — fetched every 30 seconds
+
+- **Airflow orchestration** — hourly DAG with explicit task dependencies, retries and alerting — the same Airflow deployment can orchestrate this pipeline and the batch ETL from Project 1
+
+- **Terraform infrastructure as code** — VPC, EC2 t3.micro, RDS PostgreSQL, S3 data lake and CloudWatch monitoring with 4 alarms and SNS alerts — fully provisioned in eu-west-3 with a single `terraform apply`
+
+- **Pipeline observability** — PostgreSQL pipeline_runs metadata table records every run with start time, records processed, status and error messages — structured logging across all modules with INFO/WARNING/ERROR levels
+
+- **Full Docker Compose stack** — 10 services including Zookeeper, Kafka, Schema Registry, Kafka UI, PostgreSQL, producer, consumer and init scripts — running locally with a single `make up`
+
+- **39 pytest unit tests at 79% coverage** — covering producer schema validation, Kafka fetch logic, async concurrent fetching, consumer transformations and micro-batch processing
+
+- **CI/CD pipeline** — GitHub Actions runs black formatting check and full test suite on every push — average run time 49 seconds
+
+---
+
+## 🚀 How to Run
+
+### Prerequisites
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- Free API key from [OpenWeatherMap](https://openweathermap.org/api)
+- GNU Make — included on Mac/Linux, Windows users run `$env:PATH += ";C:\Program Files (x86)\GnuWin32\bin"` after installing [GnuWin32](http://gnuwin32.sourceforge.net/packages/make.htm)
+
+### Local Docker run
+
+**1. Clone the repository**
+
+```bash
+git clone https://github.com/OjongBessongNKONGHO/spark-streaming-pipeline.git
+cd spark-streaming-pipeline
+```
+
+**2. Configure environment variables**
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set:
+- `OPENWEATHER_API_KEY` — your OpenWeatherMap API key
+- `POSTGRES_PASSWORD` — any password for the local PostgreSQL instance
+
+The S3, Delta Lake and AWS variables are only needed for AWS deployment — leave them as-is for local runs.
+
+**3. Start the full pipeline**
+
+```bash
+make up
+```
+
+This starts all 10 services — Zookeeper, Kafka, Schema Registry, Kafka UI, PostgreSQL, producer, Spark consumer and init scripts. The producer begins streaming weather data for 21 cities immediately.
+
+**4. Monitor the pipeline**
+
+| Tool | URL | Purpose |
+|---|---|---|
+| Kafka UI | http://localhost:8080 | Topic and message monitoring |
+| Producer logs | `docker logs weather_producer_spark -f` | Live producer output |
+| Consumer logs | `docker logs weather_consumer_spark -f` | Spark micro-batch output |
+| All logs | `make logs` | Combined log stream |
+
+**5. Verify Delta Lake writes**
+
+```bash
+docker exec weather_consumer_spark ls /tmp/delta/weather
+```
+
+You should see `_delta_log` and `year=YYYY` folders confirming Spark is writing to Delta Lake locally.
+
+**6. Run tests**
+
+```bash
+make test
+```
+
+**7. Stop the pipeline**
+
+```bash
+make down
+```
+
+To remove all volumes and start completely fresh:
+
+```bash
+make clean
+```
+
+### AWS deployment
+
+Planned for June 2026 — Terraform modules for EC2, S3, RDS and CloudWatch will be implemented using AWS Academy credits. Full deployment with infrastructure screenshots will be added once complete.
 
 ## Architecture
 
@@ -146,35 +265,46 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 *102 messages consumed by Spark Structured Streaming — all 21 cities — Delta Lake writing to /tmp/delta/weather*
 
 
-## How to Run
+## 📍 Status
 
-Prerequisites: Docker Desktop and OpenWeatherMap API key
+**In active development — June 2026**
 
-```bash
-cp .env.example .env
-# Add your API key to .env
-make up
-```
+**Completed:**
+- ✅ Kafka producer — 21 cities, Pydantic v2 validation, Avro serialisation, three-topic routing
+- ✅ Spark Structured Streaming consumer — micro-batch processing, watermarking, Delta Lake writes confirmed locally
+- ✅ dbt staging model and city weather summary mart with column-level tests
+- ✅ Full Docker Compose stack — 10 services running locally with `make up`
+- ✅ 39 pytest unit tests, 79% coverage, CI green
 
-Monitor the pipeline:
+**In progress:**
+- 🔄 Airflow orchestration DAG
+- 🔄 Terraform modules — EC2, S3, RDS, CloudWatch
 
-| Tool | URL | Purpose |
+**Upcoming:**
+- 🔲 AWS deployment with AWS Academy credits
+- 🔲 AWS infrastructure screenshots
+
+---
+
+## 🔗 Portfolio Context
+
+This is the fifth and most advanced project in my data engineering portfolio — bringing together everything from the previous four into a single unified stack.
+
+| Project | What it does | Stack |
 |---|---|---|
-| Kafka UI | http://localhost:8080 | Topic and message monitoring |
-| Producer logs | docker logs weather_producer_spark -f | Live producer output |
-| Consumer logs | docker logs weather_consumer_spark -f | Spark micro-batch output |
+| [Weather ETL Pipeline](https://github.com/OjongBessongNKONGHO/weather-etl-pipeline) | Batch ETL — hourly weather data pipeline | Airflow, PostgreSQL, Docker |
+| [Kafka Streaming Pipeline](https://github.com/OjongBessongNKONGHO/kafka-streaming-pipeline) | Real-time streaming — Kafka producer/consumer | Kafka, Pydantic v2, PostgreSQL, Docker |
+| [AWS Data Platform](https://github.com/OjongBessongNKONGHO/aws-data-platform) | Cloud infrastructure for the above pipelines | Terraform, AWS, IaC |
+| [DuckDB Analytics](https://github.com/OjongBessongNKONGHO/duckdb-analytics) | Analytical layer — 10 OLAP queries on pipeline data | DuckDB, Pandas, PyArrow, Click |
+| **Spark Streaming Pipeline** (this repo) | Unified stack — Spark, Delta Lake, dbt, Airflow, Terraform | Spark, Kafka, Delta Lake, dbt, Airflow, Terraform |
 
-## Status
+---
 
-In active development, June 2026
+## 👤 Author
 
-Next milestones: Terraform module implementation and AWS deployment.
-
-## Author
-
-Ojong Bessong NKONGHO
-Data Engineering Student, DSTI School of Engineering, Paris
+**Ojong Bessong NKONGHO**
+Data Engineering Student — DSTI School of Engineering, Paris
 Seeking Data Engineering internship (July 2026) and apprenticeship (September 2026)
 
-LinkedIn: linkedin.com/in/nkongho-ojong
-GitHub: github.com/OjongBessongNKONGHO
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-nkongho--ojong-0077B5?style=flat&logo=linkedin)](https://linkedin.com/in/nkongho-ojong)
+[![GitHub](https://img.shields.io/badge/GitHub-OjongBessongNKONGHO-181717?style=flat&logo=github)](https://github.com/OjongBessongNKONGHO)
