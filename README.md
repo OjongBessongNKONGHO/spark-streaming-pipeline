@@ -37,7 +37,7 @@ This is the fifth project in my data engineering portfolio. The first four cover
 
 - **Airflow orchestration** — hourly DAG with explicit task dependencies, retries and alerting — the same Airflow deployment can orchestrate this pipeline and the batch ETL from Project 1
 
-- **Terraform infrastructure as code** — VPC, EC2 t3.micro, RDS PostgreSQL, S3 data lake and CloudWatch monitoring with 4 alarms and SNS alerts — fully provisioned in eu-west-3 with a single `terraform apply`
+-Terraform infrastructure as code** — VPC, EC2 t3.small, S3 Delta Lake bucket with versioning and lifecycle policies — fully provisioned in eu-west-3 with a single `terraform apply`
 
 - **Pipeline observability** — PostgreSQL pipeline_runs metadata table records every run with start time, records processed, status and error messages — structured logging across all modules with INFO/WARNING/ERROR levels
 
@@ -123,7 +123,14 @@ make clean
 
 ### AWS deployment
 
-Planned for June 2026 — Terraform modules for EC2, S3, RDS and CloudWatch will be implemented using AWS Academy credits. Full deployment with infrastructure screenshots will be added once complete.
+Infrastructure provisioned in eu-west-3 using Terraform — EC2 t3.small instance running at `51.44.46.90`, S3 Delta Lake bucket `ojong-spark-streaming-delta-lake` with versioning, encryption and lifecycle policies. See AWS Infrastructure screenshots below.
+
+```bash
+cd terraform
+terraform init
+terraform apply
+```
+
 
 ## Architecture
 
@@ -264,6 +271,30 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 ![Spark Consumer Messages](docs/images/spark-consumer-messages.png)
 *102 messages consumed by Spark Structured Streaming — all 21 cities — Delta Lake writing to /tmp/delta/weather*
 
+### AWS Infrastructure — EC2 Instance Running
+![EC2 Instances](docs/images/aws-ec2-instances.png)
+*spark-streaming-spark-ec2 — t3.small — Running — 3/3 checks passed — eu-west-3a*
+
+### AWS Infrastructure — EC2 Instance Details
+![EC2 Instance Details](docs/images/aws-ec2-instance-details.png)
+*Public IP 51.44.46.90 — Elastic IP spark-streaming-eip — IAM role spark-streaming-ec2-role — spark-streaming-vpc*
+
+### AWS Infrastructure — S3 Delta Lake Bucket
+![S3 Bucket](docs/images/aws-s3-bucket.png)
+*ojong-spark-streaming-delta-lake — Europe (Paris) eu-west-3 — created June 10 2026*
+
+### AWS Infrastructure — Delta Lake Folder Structure
+![S3 Delta Lake Folders](docs/images/aws-s3-delta-lake-folders.png)
+*checkpoints/, delta/, logs/ — Delta Lake folder structure provisioned by Terraform*
+
+### AWS Infrastructure — VPC
+![VPC](docs/images/aws-vpc.png)
+*spark-streaming-vpc — vpc-063c5ce4bf40d982d — Available — eu-west-3*
+
+### AWS Infrastructure — VPC Details
+![VPC Details](docs/images/aws-vpc-details.png)
+*Route tables, subnets and network ACLs provisioned by Terraform*
+
 
 ## 📍 Status
 
@@ -278,11 +309,15 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 
 **In progress:**
 - 🔄 Airflow orchestration DAG
-- 🔄 Terraform modules — EC2, S3, RDS, CloudWatch
+
+**Completed recently:**
+- ✅ Terraform modules — networking, compute, storage
+- ✅ AWS deployment — EC2 t3.small running in eu-west-3, S3 Delta Lake bucket provisioned
+- ✅ AWS infrastructure screenshots added
 
 **Upcoming:**
-- 🔲 AWS deployment with AWS Academy credits
-- 🔲 AWS infrastructure screenshots
+- 🔲 Run full pipeline on AWS EC2
+- 🔲 Connect Spark consumer to S3 Delta Lake path
 
 ---
 
