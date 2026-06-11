@@ -286,11 +286,11 @@ Deploying to AWS surfaced four issues that never appeared in local Docker testin
 
 ### AWS Infrastructure — EC2 Instance Running
 ![EC2 Instances](docs/images/aws-ec2-instances.png)
-*spark-streaming-spark-ec2 — t3.medium — Running — 3/3 checks passed — eu-west-3a*
+*spark-streaming-spark-ec2 — i-031b17ed17bdc3ef5 — t3.medium — Running — 3/3 checks passed — eu-west-3a*
 
 ### AWS Infrastructure — EC2 Instance Details
 ![EC2 Instance Details](docs/images/aws-ec2-instance-details.png)
-*Elastic IP spark-streaming-eip — IAM role spark-streaming-ec2-role — spark-streaming-vpc*
+*Public IP 13.37.166.199 — Elastic IP spark-streaming-eip — IAM role spark-streaming-ec2-role — spark-streaming-vpc*
 
 ### AWS Infrastructure — S3 Delta Lake Bucket
 ![S3 Bucket](docs/images/aws-s3-bucket.png)
