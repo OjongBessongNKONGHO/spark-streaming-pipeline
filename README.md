@@ -294,7 +294,7 @@ Deploying to AWS surfaced four issues that never appeared in local Docker testin
 
 ### AWS Infrastructure — S3 Delta Lake Bucket
 ![S3 Bucket](docs/images/aws-s3-bucket.png)
-*ojong-spark-streaming-delta-lake — Europe (Paris) eu-west-3 — created June 10 2026*
+*ojong-spark-streaming-delta-lake — Europe (Paris) eu-west-3*
 
 ### AWS Infrastructure — Delta Lake Folder Structure
 ![S3 Delta Lake Folders](docs/images/aws-s3-delta-lake-folders.png)
@@ -310,7 +310,7 @@ Deploying to AWS surfaced four issues that never appeared in local Docker testin
 
 ### AWS — Spark Structured Streaming Writing to S3 Delta Lake
 ![Spark Streaming S3 Output](docs/images/aws-s3-spark-streaming-output.png)
-*33 Parquet files in delta/weather/year=2026/month=6/day=11/hour=10/ — Spark Structured Streaming actively writing micro-batches to S3 Delta Lake from EC2*
+*78 Parquet files in delta/weather/year=2026/month=6/day=11/hour=14/ — Spark Structured Streaming actively writing micro-batches to S3 Delta Lake from EC2*
 
 
 ## 📍 Status
@@ -325,7 +325,7 @@ Deploying to AWS surfaced four issues that never appeared in local Docker testin
 - ✅ 39 pytest unit tests, 79% coverage, CI green
 - ✅ Terraform modules — networking, compute, storage — 23 AWS resources provisioned in eu-west-3
 - ✅ AWS deployment — EC2 t3.medium running full pipeline, S3 Delta Lake bucket live
-- ✅ Spark Structured Streaming confirmed writing live to S3 Delta Lake on AWS — verified with 33 Parquet files and 5 transaction log commits in a single hour
+- ✅ Spark Structured Streaming confirmed writing live to S3 Delta Lake on AWS — verified across two separate sessions, with 78 Parquet files written to a single hourly partition
 
 **In progress:**
 - 🔄 Airflow orchestration DAG
