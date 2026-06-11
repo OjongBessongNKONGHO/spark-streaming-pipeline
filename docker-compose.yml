@@ -139,6 +139,11 @@ services:
       POSTGRES_DB: weather_streaming
       POSTGRES_USER: streaming_user
       POSTGRES_PASSWORD: streaming_password
+      DELTA_LAKE_PATH: s3a://ojong-spark-streaming-delta-lake/delta/weather
+      CHECKPOINT_PATH: s3a://ojong-spark-streaming-delta-lake/checkpoints/weather
+      AWS_REGION: eu-west-3
+      S3_BUCKET: ojong-spark-streaming-delta-lake
+      AWS_DEFAULT_REGION: eu-west-3
     volumes:
       - ./logs:/app/logs
     restart: unless-stopped

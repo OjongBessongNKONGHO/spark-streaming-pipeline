@@ -37,7 +37,7 @@ This is the fifth project in my data engineering portfolio. The first four cover
 
 - **Airflow orchestration** — hourly DAG with explicit task dependencies, retries and alerting — the same Airflow deployment can orchestrate this pipeline and the batch ETL from Project 1
 
--Terraform infrastructure as code** — VPC, EC2 t3.small, S3 Delta Lake bucket with versioning and lifecycle policies — fully provisioned in eu-west-3 with a single `terraform apply`
+- **Terraform infrastructure as code** — VPC, EC2 t3.medium, S3 Delta Lake bucket with versioning and lifecycle policies — fully provisioned in eu-west-3 with a single `terraform apply`
 
 - **Pipeline observability** — PostgreSQL pipeline_runs metadata table records every run with start time, records processed, status and error messages — structured logging across all modules with INFO/WARNING/ERROR levels
 
@@ -121,9 +121,10 @@ To remove all volumes and start completely fresh:
 make clean
 ```
 
+
 ### AWS deployment
 
-Infrastructure provisioned in eu-west-3 using Terraform — EC2 t3.small instance running at `51.44.46.90`, S3 Delta Lake bucket `ojong-spark-streaming-delta-lake` with versioning, encryption and lifecycle policies. See AWS Infrastructure screenshots below.
+Infrastructure provisioned in eu-west-3 using Terraform — EC2 t3.medium instance running at `13.37.166.199`, S3 Delta Lake bucket `ojong-spark-streaming-delta-lake` with versioning, encryption and lifecycle policies. The full Docker Compose stack runs on EC2 with the Spark consumer writing live to S3 Delta Lake. See AWS Infrastructure screenshots below.
 
 ```bash
 cd terraform
@@ -220,6 +221,18 @@ Spark transformations are Python. They work but they are hard to document, test 
 **Why Airflow?**
 The streaming consumer runs continuously, no scheduling needed. But the batch analysis jobs need to run on a schedule and they have dependencies. The quality check must run after the batch analysis. The Kafka health check must run before both. Airflow manages those dependencies with retries and alerting. It also means a single Airflow deployment can orchestrate both this pipeline and the ETL pipeline from Project 1.
 
+**Debugging the AWS deployment — four real production issues**
+
+Deploying to AWS surfaced four issues that never appeared in local Docker testing, each requiring a different kind of fix.
+
+*Issue 1 — AWS account free-tier instance type restriction.* The Terraform plan failed with `FreeTierRestrictionError` when attempting to launch a t3.small instance. AWS personal accounts under the free tier only permit t2.micro/t3.micro instance types regardless of available credits. Spark's JVM requires a minimum of 2GB RAM to start reliably, and t3.micro (1GB) is insufficient. After verifying the account's free-tier status in Billing settings and removing the restriction, redeploying with t3.small succeeded, and was later resized to t3.medium (4GB) for headroom running all 8 containers simultaneously.
+
+*Issue 2 — SSH key pair mismatch after Terraform key rotation.* After regenerating the EC2 key pair via the AWS CLI, SSH authentication failed with `Permission denied (publickey)`. The root cause: an EC2 instance's authorized key is baked in at launch time from the key pair specified in Terraform — rotating the AWS key pair afterwards does not update running instances. The fix was to destroy and recreate only the EC2 instance and Elastic IP (`terraform destroy -target`), which re-launched with the new key pair while leaving the VPC, subnets, security groups and S3 bucket untouched.
+
+*Issue 3 — Spark could not write to S3 (`ClassNotFoundException: S3AFileSystem`).* The Spark consumer started successfully and read from Kafka, but failed when writing the Delta Lake sink with `Class org.apache.hadoop.fs.s3a.S3AFileSystem not found`. The Dockerfile included the Delta Lake and Kafka connector JARs but not the `hadoop-aws` and `aws-java-sdk-bundle` JARs that provide the S3A filesystem implementation Spark needs to write to `s3a://` paths. Adding both JARs (matching the Hadoop 3.3.4 version bundled with Spark 3.5.0) to the Docker image resolved it. Verified by checking the S3 bucket directly — Spark wrote 5 Delta Lake transaction log commits and 33 Parquet partition files to `s3a://ojong-spark-streaming-delta-lake/delta/weather/` within one hour of starting.
+
+*Issue 4 — docker-compose environment variables not propagated from `.env`.* Even after fixing the JARs, the consumer continued writing to its local default path `/tmp/delta/weather` rather than S3. The `.env` file on the EC2 instance correctly contained `DELTA_LAKE_PATH=s3a://...`, but `docker-compose.yml` defines an explicit `environment:` block per service that does not automatically forward all host environment variables — only the ones explicitly listed. Adding `DELTA_LAKE_PATH`, `CHECKPOINT_PATH`, `S3_BUCKET`, `AWS_REGION` and `AWS_DEFAULT_REGION` to the consumer service's environment block fixed it.
+
 ## Pipeline Metrics
 
 | Metric | Value |
@@ -273,11 +286,11 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 
 ### AWS Infrastructure — EC2 Instance Running
 ![EC2 Instances](docs/images/aws-ec2-instances.png)
-*spark-streaming-spark-ec2 — t3.small — Running — 3/3 checks passed — eu-west-3a*
+*spark-streaming-spark-ec2 — t3.medium — Running — 3/3 checks passed — eu-west-3a*
 
 ### AWS Infrastructure — EC2 Instance Details
 ![EC2 Instance Details](docs/images/aws-ec2-instance-details.png)
-*Public IP 51.44.46.90 — Elastic IP spark-streaming-eip — IAM role spark-streaming-ec2-role — spark-streaming-vpc*
+*Elastic IP spark-streaming-eip — IAM role spark-streaming-ec2-role — spark-streaming-vpc*
 
 ### AWS Infrastructure — S3 Delta Lake Bucket
 ![S3 Bucket](docs/images/aws-s3-bucket.png)
@@ -295,6 +308,10 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 ![VPC Details](docs/images/aws-vpc-details.png)
 *Route tables, subnets and network ACLs provisioned by Terraform*
 
+### AWS — Spark Structured Streaming Writing to S3 Delta Lake
+![Spark Streaming S3 Output](docs/images/aws-s3-spark-streaming-output.png)
+*33 Parquet files in delta/weather/year=2026/month=6/day=11/hour=10/ — Spark Structured Streaming actively writing micro-batches to S3 Delta Lake from EC2*
+
 
 ## 📍 Status
 
@@ -302,22 +319,20 @@ The streaming consumer runs continuously, no scheduling needed. But the batch an
 
 **Completed:**
 - ✅ Kafka producer — 21 cities, Pydantic v2 validation, Avro serialisation, three-topic routing
-- ✅ Spark Structured Streaming consumer — micro-batch processing, watermarking, Delta Lake writes confirmed locally
+- ✅ Spark Structured Streaming consumer — micro-batch processing, watermarking, checkpointing
 - ✅ dbt staging model and city weather summary mart with column-level tests
 - ✅ Full Docker Compose stack — 10 services running locally with `make up`
 - ✅ 39 pytest unit tests, 79% coverage, CI green
+- ✅ Terraform modules — networking, compute, storage — 23 AWS resources provisioned in eu-west-3
+- ✅ AWS deployment — EC2 t3.medium running full pipeline, S3 Delta Lake bucket live
+- ✅ Spark Structured Streaming confirmed writing live to S3 Delta Lake on AWS — verified with 33 Parquet files and 5 transaction log commits in a single hour
 
 **In progress:**
 - 🔄 Airflow orchestration DAG
 
-**Completed recently:**
-- ✅ Terraform modules — networking, compute, storage
-- ✅ AWS deployment — EC2 t3.small running in eu-west-3, S3 Delta Lake bucket provisioned
-- ✅ AWS infrastructure screenshots added
-
 **Upcoming:**
-- 🔲 Run full pipeline on AWS EC2
-- 🔲 Connect Spark consumer to S3 Delta Lake path
+- 🔲 Add Airflow and dbt services to Docker Compose for end-to-end orchestration
+- 🔲 CloudWatch monitoring and alarms for the Spark pipeline on EC2
 
 ---
 
