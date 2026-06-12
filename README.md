@@ -221,9 +221,9 @@ Spark transformations are Python. They work but they are hard to document, test 
 **Why Airflow?**
 The streaming consumer runs continuously, no scheduling needed. But the batch analysis jobs need to run on a schedule and they have dependencies. The quality check must run after the batch analysis. The Kafka health check must run before both. Airflow manages those dependencies with retries and alerting. It also means a single Airflow deployment can orchestrate both this pipeline and the ETL pipeline from Project 1.
 
-**Debugging the AWS deployment — four real production issues**
+**Debugging the AWS deployment — five real production issues**
 
-Deploying to AWS surfaced four issues that never appeared in local Docker testing, each requiring a different kind of fix.
+Deploying to AWS surfaced five issues that never appeared in local Docker testing, each requiring a different kind of fix.
 
 *Issue 1 — AWS account free-tier instance type restriction.* The Terraform plan failed with `FreeTierRestrictionError` when attempting to launch a t3.small instance. AWS personal accounts under the free tier only permit t2.micro/t3.micro instance types regardless of available credits. Spark's JVM requires a minimum of 2GB RAM to start reliably, and t3.micro (1GB) is insufficient. After verifying the account's free-tier status in Billing settings and removing the restriction, redeploying with t3.small succeeded, and was later resized to t3.medium (4GB) for headroom running all 8 containers simultaneously.
 
@@ -232,6 +232,8 @@ Deploying to AWS surfaced four issues that never appeared in local Docker testin
 *Issue 3 — Spark could not write to S3 (`ClassNotFoundException: S3AFileSystem`).* The Spark consumer started successfully and read from Kafka, but failed when writing the Delta Lake sink with `Class org.apache.hadoop.fs.s3a.S3AFileSystem not found`. The Dockerfile included the Delta Lake and Kafka connector JARs but not the `hadoop-aws` and `aws-java-sdk-bundle` JARs that provide the S3A filesystem implementation Spark needs to write to `s3a://` paths. Adding both JARs (matching the Hadoop 3.3.4 version bundled with Spark 3.5.0) to the Docker image resolved it. Verified by checking the S3 bucket directly — Spark wrote 5 Delta Lake transaction log commits and 33 Parquet partition files to `s3a://ojong-spark-streaming-delta-lake/delta/weather/` within one hour of starting.
 
 *Issue 4 — docker-compose environment variables not propagated from `.env`.* Even after fixing the JARs, the consumer continued writing to its local default path `/tmp/delta/weather` rather than S3. The `.env` file on the EC2 instance correctly contained `DELTA_LAKE_PATH=s3a://...`, but `docker-compose.yml` defines an explicit `environment:` block per service that does not automatically forward all host environment variables — only the ones explicitly listed. Adding `DELTA_LAKE_PATH`, `CHECKPOINT_PATH`, `S3_BUCKET`, `AWS_REGION` and `AWS_DEFAULT_REGION` to the consumer service's environment block fixed it.
+
+*Issue 5 — EC2 instance forced to replace on every `terraform apply` due to AMI drift.* The compute module used a `data "aws_ami"` lookup with `most_recent = true` to always provision the latest Amazon Linux 2023 AMI. This works for the initial deployment, but on every subsequent `terraform plan`, the data source re-resolves to whatever AMI AWS has published most recently — which is often a newer image than the one the running instance was launched with. Since `ami` is an immutable EC2 attribute, any difference forces Terraform to destroy and recreate the instance, discarding its state and requiring a full re-setup. The fix was adding a `lifecycle { ignore_changes = [ami] }` block to the instance resource — Terraform still resolves the latest AMI for brand-new deployments, but never treats a changed AMI as a reason to replace an already-running instance.
 
 ## Pipeline Metrics
 
@@ -326,13 +328,13 @@ Deploying to AWS surfaced four issues that never appeared in local Docker testin
 - ✅ Terraform modules — networking, compute, storage — 23 AWS resources provisioned in eu-west-3
 - ✅ AWS deployment — EC2 t3.medium running full pipeline, S3 Delta Lake bucket live
 - ✅ Spark Structured Streaming confirmed writing live to S3 Delta Lake on AWS — verified across two separate sessions, with 78 Parquet files written to a single hourly partition
+- ✅ CloudWatch monitoring — CPU and status check alarms with SNS email notifications
 
 **In progress:**
 - 🔄 Airflow orchestration DAG
 
 **Upcoming:**
 - 🔲 Add Airflow and dbt services to Docker Compose for end-to-end orchestration
-- 🔲 CloudWatch monitoring and alarms for the Spark pipeline on EC2
 
 ---
 
