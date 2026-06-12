@@ -178,6 +178,15 @@ resource "aws_instance" "pipeline" {
       Environment = var.environment
       ManagedBy   = "Terraform"
     }
+
+  }
+
+  # Pin the AMI once deployed — most_recent AMI lookups drift over time
+  # as AWS publishes new AL2023 images, which would force an unwanted
+  # instance replacement on every `terraform apply`. Ignore AMI changes
+  # to keep this instance stable; new deployments still get the latest AMI.
+  lifecycle {
+    ignore_changes = [ami]
   }
 
   tags = {
