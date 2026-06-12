@@ -54,3 +54,8 @@ variable "bucket_name" {
   description = "Name of the S3 bucket for Delta Lake — must be globally unique"
   type        = string
 }
+
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+}

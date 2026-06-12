@@ -58,6 +58,7 @@ module "compute" {
   key_pair_name     = var.key_pair_name
   s3_bucket_arn     = module.storage.bucket_arn
   aws_region        = var.aws_region
+  alarm_email       = var.alarm_email
 
   depends_on = [module.networking, module.storage]
 }

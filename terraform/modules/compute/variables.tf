@@ -43,3 +43,8 @@ variable "aws_region" {
   type        = string
   default     = "eu-west-3"
 }
+
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+}
