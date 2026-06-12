@@ -1,16 +1,16 @@
-﻿.PHONY: up down logs test clean
+.PHONY: up down logs test clean
 
 up:
-docker-compose up -d
+	docker-compose up -d
 
 down:
-docker-compose down
+	docker-compose down
 
 logs:
-docker-compose logs -f
+	docker-compose logs -f
 
 test:
-pytest tests/ -v
+	pytest tests/ -v
 
 clean:
-docker-compose down -v
+	docker-compose down -v
