@@ -23,6 +23,12 @@ from pyspark.sql.types import (
     TimestampType,
 )
 from pyspark.sql.functions import col, year, month, dayofmonth, hour, to_timestamp
+import os
+
+os.environ.setdefault(
+    "PYSPARK_SUBMIT_ARGS",
+    "--packages io.delta:delta-spark_2.12:3.0.0 pyspark-shell",
+)
 from delta import configure_spark_with_delta_pip
 
 # ── Fixtures ──────────────────────────────────────────────────────────
