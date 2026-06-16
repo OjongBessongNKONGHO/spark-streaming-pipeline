@@ -31,7 +31,11 @@ from delta import configure_spark_with_delta_pip
 @pytest.fixture(scope="session")
 def spark(tmp_path_factory):
     import os
+    from pyspark.sql import SparkSession as _SS
 
+    existing = _SS.getActiveSession()
+    if existing:
+        existing.stop()
     os.environ["HADOOP_HOME"] = "C:\\hadoop"
     os.environ["PATH"] = "C:\\hadoop\\bin;" + os.environ.get("PATH", "")
     tmp = tmp_path_factory.mktemp("spark_warehouse")
