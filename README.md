@@ -43,7 +43,7 @@ This is the fifth project in my data engineering portfolio. The first four cover
 
 - **Full Docker Compose stack** — 10 services including Zookeeper, Kafka, Schema Registry, Kafka UI, PostgreSQL, producer, consumer and init scripts — running locally with a single `make up`
 
-- **39 pytest unit tests at 79% coverage** — covering producer schema validation, Kafka fetch logic, async concurrent fetching, consumer transformations and micro-batch processing
+- **46 pytest unit tests at 79% coverage** — 39 unit tests covering producer, consumer and schema validation plus 7 Delta Lake integration tests verifying the full write/read cycle, partitioning, schema preservation and append semantics
 
 - **CI/CD pipeline** — GitHub Actions runs black formatting check and full test suite on every push — average run time 49 seconds
 
@@ -189,7 +189,7 @@ spark-streaming-pipeline/
 │       ├── networking/     # VPC, subnets, security groups
 │       ├── compute/        # EC2, IAM
 │       └── storage/        # S3, Delta Lake buckets
-├── tests/                  # 39 pytest unit tests
+├── tests/                  # 46 pytest unit tests
 ├── config/config.yaml      # Central configuration
 ├── scripts/                # Kafka topics and DB initialisation
 ├── docs/                   # Architecture diagrams
@@ -244,7 +244,7 @@ Deploying to AWS surfaced five issues that never appeared in local Docker testin
 | Spark micro-batch interval | 30 seconds |
 | Delta Lake storage format | Parquet with Snappy compression |
 | Test coverage | 79% |
-| Unit tests | 39 across 4 files |
+| Unit tests | 46 across 5 files (39 unit + 7 Delta Lake integration) |
 | Average CI run time | 49 seconds |
 
 
@@ -324,7 +324,7 @@ Deploying to AWS surfaced five issues that never appeared in local Docker testin
 - ✅ Spark Structured Streaming consumer — micro-batch processing, watermarking, checkpointing
 - ✅ dbt staging model and city weather summary mart with column-level tests
 - ✅ Full Docker Compose stack — 10 services running locally with `make up`
-- ✅ 39 pytest unit tests, 79% coverage, CI green
+- ✅ 46 pytest unit tests, CI green — 39 unit tests + 7 Delta Lake integration tests covering write/read roundtrip, partitioning, schema preservation and append semantics
 - ✅ Terraform modules — networking, compute, storage — 23 AWS resources provisioned in eu-west-3
 - ✅ AWS deployment — EC2 t3.medium running full pipeline, S3 Delta Lake bucket live
 - ✅ Spark Structured Streaming confirmed writing live to S3 Delta Lake on AWS — verified across two separate sessions, with 78 Parquet files written to a single hourly partition
