@@ -1,4 +1,4 @@
-﻿# Spark Structured Streaming Pipeline
+# Spark Structured Streaming Pipeline
 
 ![CI](https://github.com/OjongBessongNKONGHO/spark-streaming-pipeline/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat&logo=python)
