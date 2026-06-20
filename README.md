@@ -347,7 +347,7 @@ This is the fifth and most advanced project in my data engineering portfolio —
 | [Weather ETL Pipeline](https://github.com/OjongBessongNKONGHO/weather-etl-pipeline) | Batch ETL — hourly weather data pipeline | Airflow, PostgreSQL, Docker |
 | [Kafka Streaming Pipeline](https://github.com/OjongBessongNKONGHO/kafka-streaming-pipeline) | Real-time streaming — Kafka producer/consumer | Kafka, Pydantic v2, PostgreSQL, Docker |
 | [AWS Data Platform](https://github.com/OjongBessongNKONGHO/aws-data-platform) | Cloud infrastructure for the above pipelines | Terraform, AWS, IaC |
-| [DuckDB Analytics](https://github.com/OjongBessongNKONGHO/duckdb-analytics) | Analytical layer — 10 OLAP queries on pipeline data | DuckDB, Pandas, PyArrow, Click |
+| [DuckDB Analytics](https://github.com/OjongBessongNKONGHO/duckdb-analytics) | Analytical layer — 12 OLAP queries on pipeline data | DuckDB, Pandas, PyArrow, Click |
 | **Spark Streaming Pipeline** (this repo) | Unified stack — Spark, Delta Lake, dbt, Airflow, Terraform | Spark, Kafka, Delta Lake, dbt, Airflow, Terraform |
 
 ---
