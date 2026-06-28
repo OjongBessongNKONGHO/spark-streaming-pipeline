@@ -329,9 +329,8 @@ Deploying to AWS surfaced five issues that never appeared in local Docker testin
 - ✅ AWS deployment — EC2 t3.medium running full pipeline, S3 Delta Lake bucket live
 - ✅ Spark Structured Streaming confirmed writing live to S3 Delta Lake on AWS — verified across two separate sessions, with 78 Parquet files written to a single hourly partition
 - ✅ CloudWatch monitoring — CPU and status check alarms with SNS email notifications
+- ✅ Airflow DAG — hourly batch analysis with Kafka health check, Delta Lake verification, 8 OLAP jobs and PostgreSQL run logging
 
-**In progress:**
-- 🔄 Airflow orchestration DAG
 
 **Upcoming:**
 - 🔲 Add Airflow and dbt services to Docker Compose for end-to-end orchestration
