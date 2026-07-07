@@ -4,6 +4,7 @@ Reads from Delta Lake, computes 8 OLAP-style analytical aggregations
 and writes results back to Delta Lake as separate analytical tables.
 Triggered by Airflow on a scheduled basis.
 """
+
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
     avg,
@@ -51,8 +52,13 @@ def create_spark_session() -> SparkSession:
                     "spark.hadoop.fs.s3a.aws.credentials.provider",
                     "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
                 )
-                .config("spark.hadoop.fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", ""))
-                .config("spark.hadoop.fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", ""))
+                .config(
+                    "spark.hadoop.fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", "")
+                )
+                .config(
+                    "spark.hadoop.fs.s3a.secret.key",
+                    os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+                )
             )
         else:
             builder = builder.config(
@@ -120,7 +126,9 @@ def temperature_humidity_correlation(df: DataFrame) -> DataFrame:
     """Computes the correlation between temperature and humidity per city.
     Shows if higher temperatures mean lower humidity."""
     return df.groupBy("city", "country").agg(
-        spark_round(corr("temperature", "humidity"), 4).alias("temp_humidity_correlation"),
+        spark_round(corr("temperature", "humidity"), 4).alias(
+            "temp_humidity_correlation"
+        ),
         spark_round(avg("temperature"), 2).alias("avg_temperature"),
         spark_round(avg("humidity"), 2).alias("avg_humidity"),
     )
