@@ -70,10 +70,25 @@ def create_spark_session() -> SparkSession:
     if DELTA_PATH.startswith("s3a://"):
         builder = builder.config(
             "spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem"
-        ).config(
-            "spark.hadoop.fs.s3a.aws.credentials.provider",
-            "com.amazonaws.auth.InstanceProfileCredentialsProvider",
         )
+        s3_endpoint = os.getenv("AWS_S3_ENDPOINT")
+        if s3_endpoint:
+            builder = (
+                builder.config("spark.hadoop.fs.s3a.endpoint", s3_endpoint)
+                .config("spark.hadoop.fs.s3a.path.style.access", "true")
+                .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
+                .config(
+                    "spark.hadoop.fs.s3a.aws.credentials.provider",
+                    "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
+                )
+                .config("spark.hadoop.fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", ""))
+                .config("spark.hadoop.fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", ""))
+            )
+        else:
+            builder = builder.config(
+                "spark.hadoop.fs.s3a.aws.credentials.provider",
+                "com.amazonaws.auth.InstanceProfileCredentialsProvider",
+            )
 
     return builder.getOrCreate()
 

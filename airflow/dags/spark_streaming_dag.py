@@ -14,6 +14,8 @@ Task order:
 from datetime import datetime, timedelta
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.providers.docker.operators.docker import DockerOperator
+from docker.types import Mount
 import logging
 import os
 
@@ -83,26 +85,6 @@ def check_delta_lake(**context):
             )
 
 
-def run_batch_analysis(**context):
-    """
-    Triggers the 8 OLAP analytical jobs on Delta Lake.
-    Imports and runs the batch analysis module directly.
-    """
-    import sys
-
-    sys.path.insert(0, "/opt/airflow")
-
-    try:
-        from jobs.batch_analysis import run
-        logger.info("Starting batch analysis — 8 OLAP jobs on Delta Lake")
-        run()
-        logger.info("Batch analysis complete — all 8 jobs finished")
-        context["ti"].xcom_push(key="analysis_status", value="success")
-        context["ti"].xcom_push(key="jobs_run", value=8)
-    except Exception as e:
-        logger.error(f"Batch analysis failed: {e}")
-        context["ti"].xcom_push(key="analysis_status", value="failed")
-        raise
 
 
 def log_pipeline_run(**context):
@@ -179,9 +161,26 @@ with DAG(
         python_callable=check_delta_lake,
     )
 
-    batch_analysis = PythonOperator(
+    batch_analysis = DockerOperator(
         task_id="run_batch_analysis",
-        python_callable=run_batch_analysis,
+        image="spark-streaming-consumer:latest",
+        api_version="auto",
+        auto_remove="success",
+        command="python3 jobs/batch_analysis.py",
+        docker_url="unix://var/run/docker.sock",
+        network_mode="spark-streaming-pipeline_default",
+        working_dir="/app",
+        mount_tmp_dir=False,
+        environment={
+            "DELTA_LAKE_PATH": os.getenv("DELTA_LAKE_PATH", ""),
+            "ANALYTICS_PATH": os.getenv("ANALYTICS_PATH", ""),
+            "AWS_REGION": os.getenv("AWS_REGION", "eu-west-3"),
+            "AWS_DEFAULT_REGION": os.getenv("AWS_DEFAULT_REGION", "eu-west-3"),
+            "S3_BUCKET": os.getenv("S3_BUCKET", ""),
+            "AWS_S3_ENDPOINT": os.getenv("AWS_S3_ENDPOINT", ""),
+            "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
+            "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+        },
     )
 
     log_run = PythonOperator(

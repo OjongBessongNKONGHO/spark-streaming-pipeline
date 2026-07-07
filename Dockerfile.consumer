@@ -30,6 +30,7 @@ RUN pip3 install --no-cache-dir pydantic==2.5.3 kafka-python==2.0.2 requests==2.
 COPY consumer/ ./consumer/
 COPY producer/ ./producer/
 COPY config/ ./config/
+COPY jobs/ ./jobs/
 
 RUN mkdir -p logs
 

@@ -4,7 +4,6 @@ Reads from Delta Lake, computes 8 OLAP-style analytical aggregations
 and writes results back to Delta Lake as separate analytical tables.
 Triggered by Airflow on a scheduled basis.
 """
-
 from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
     avg,
@@ -16,7 +15,10 @@ from pyspark.sql.functions import (
     round as spark_round,
     rank,
     desc,
+    when,
+    corr,
 )
+
 from pyspark.sql.window import Window
 import os
 
@@ -26,15 +28,39 @@ ANALYTICS_PATH = os.getenv("ANALYTICS_PATH", "s3a://your-bucket/delta/analytics"
 
 def create_spark_session() -> SparkSession:
     """Creates and returns a Spark session for batch analysis."""
-    return (
+    builder = (
         SparkSession.builder.appName("WeatherBatchAnalysis")
         .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension")
         .config(
             "spark.sql.catalog.spark_catalog",
             "org.apache.spark.sql.delta.catalog.DeltaCatalog",
         )
-        .getOrCreate()
     )
+
+    if DELTA_PATH.startswith("s3a://"):
+        builder = builder.config(
+            "spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem"
+        )
+        s3_endpoint = os.getenv("AWS_S3_ENDPOINT")
+        if s3_endpoint:
+            builder = (
+                builder.config("spark.hadoop.fs.s3a.endpoint", s3_endpoint)
+                .config("spark.hadoop.fs.s3a.path.style.access", "true")
+                .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
+                .config(
+                    "spark.hadoop.fs.s3a.aws.credentials.provider",
+                    "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
+                )
+                .config("spark.hadoop.fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", ""))
+                .config("spark.hadoop.fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", ""))
+            )
+        else:
+            builder = builder.config(
+                "spark.hadoop.fs.s3a.aws.credentials.provider",
+                "com.amazonaws.auth.InstanceProfileCredentialsProvider",
+            )
+
+    return builder.getOrCreate()
 
 
 def average_temperature_by_city(df: DataFrame) -> DataFrame:
@@ -64,8 +90,17 @@ def humidity_trends(df: DataFrame) -> DataFrame:
 
 
 def wind_distribution(df: DataFrame) -> DataFrame:
-    """Computes wind speed statistics and dominant wind category per city."""
-    return df.groupBy("city", "country", "wind_category").agg(
+    """Computes wind speed statistics and dominant wind category per city.
+    Wind category is derived here since the source schema only stores
+    raw wind_speed, not a precomputed category."""
+    df_with_category = df.withColumn(
+        "wind_category",
+        when(col("wind_speed") < 1.5, "Calm")
+        .when(col("wind_speed") < 5.5, "Light Breeze")
+        .when(col("wind_speed") < 10.7, "Moderate")
+        .otherwise("Strong"),
+    )
+    return df_with_category.groupBy("city", "country", "wind_category").agg(
         spark_round(avg("wind_speed"), 2).alias("avg_wind_speed"),
         spark_round(max("wind_speed"), 2).alias("max_wind_speed"),
         count("*").alias("occurrence_count"),
@@ -82,10 +117,10 @@ def condition_frequency(df: DataFrame) -> DataFrame:
 
 
 def temperature_humidity_correlation(df: DataFrame) -> DataFrame:
-    """Computes average heat index per city as a proxy for
-    temperature-humidity correlation."""
+    """Computes the correlation between temperature and humidity per city.
+    Shows if higher temperatures mean lower humidity."""
     return df.groupBy("city", "country").agg(
-        spark_round(avg("heat_index"), 2).alias("avg_heat_index"),
+        spark_round(corr("temperature", "humidity"), 4).alias("temp_humidity_correlation"),
         spark_round(avg("temperature"), 2).alias("avg_temperature"),
         spark_round(avg("humidity"), 2).alias("avg_humidity"),
     )

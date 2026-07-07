@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
 
   zookeeper:
@@ -79,6 +77,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - ./scripts/init_airflow_db.sql:/docker-entrypoint-initdb.d/init_airflow_db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U streaming_user -d weather_streaming"]
       interval: 10s
@@ -123,6 +122,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.consumer
+    image: spark-streaming-consumer:latest
     container_name: weather_consumer_spark
     depends_on:
       kafka:
@@ -131,6 +131,8 @@ services:
         condition: service_healthy
       postgres:
         condition: service_healthy
+      minio-create-bucket:
+        condition: service_completed_successfully
     environment:
       KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       SCHEMA_REGISTRY_URL: http://schema-registry:8081
@@ -144,9 +146,138 @@ services:
       AWS_REGION: eu-west-3
       S3_BUCKET: ojong-spark-streaming-delta-lake
       AWS_DEFAULT_REGION: eu-west-3
+      AWS_S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
     volumes:
       - ./logs:/app/logs
     restart: unless-stopped
 
+  airflow-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow_init_spark
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://streaming_user:streaming_password@postgres:5432/airflow_db
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ""
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - airflow_logs:/opt/airflow/logs
+    command: >
+      bash -c "airflow db migrate && airflow users create --username admin --password admin --firstname Ojong --lastname Bessong --role Admin --email admin@example.com"
+    restart: "no"
+
+  airflow-webserver:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow_webserver_spark
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    ports:
+      - "8082:8080"
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://streaming_user:streaming_password@postgres:5432/airflow_db
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ""
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - airflow_logs:/opt/airflow/logs
+    command: webserver
+    restart: unless-stopped
+
+  airflow-scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow
+    container_name: airflow_scheduler_spark
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://streaming_user:streaming_password@postgres:5432/airflow_db
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__FERNET_KEY: ""
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+      DELTA_LAKE_PATH: s3a://ojong-spark-streaming-delta-lake/delta/weather
+      ANALYTICS_PATH: s3a://ojong-spark-streaming-delta-lake/delta/analytics
+      AWS_REGION: eu-west-3
+      AWS_DEFAULT_REGION: eu-west-3
+      S3_BUCKET: ojong-spark-streaming-delta-lake
+      AWS_S3_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: weather_streaming
+      POSTGRES_USER: streaming_user
+      POSTGRES_PASSWORD: streaming_password
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/plugins:/opt/airflow/plugins
+      - airflow_logs:/opt/airflow/logs
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: scheduler
+    restart: unless-stopped
+
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.7.latest
+    container_name: dbt_spark
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: weather_streaming
+      POSTGRES_USER: streaming_user
+      POSTGRES_PASSWORD: streaming_password
+      DBT_PROFILES_DIR: /usr/app
+    volumes:
+      - ./dbt:/usr/app
+    command: ["run"]
+    restart: "no"
+
+  
+  minio:
+    image: cgr.dev/chainguard/minio:latest
+    container_name: minio_spark
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    command: ["server", "/data", "--console-address", ":9001"]
+    volumes:
+      - minio_data:/data
+
+  minio-create-bucket:
+    image: amazon/aws-cli
+    container_name: minio_create_bucket
+    depends_on:
+      - minio
+    entrypoint: ["/bin/sh", "-c"]
+    environment:
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin123
+      AWS_DEFAULT_REGION: eu-west-3
+    command:
+      - "until aws --endpoint-url http://minio:9000 s3 ls >/dev/null 2>&1; do echo waiting for minio...; sleep 1; done; aws --endpoint-url http://minio:9000 s3 mb s3://ojong-spark-streaming-delta-lake || true"
+    restart: "no" 
+
 volumes:
   postgres_data:
+  airflow_logs:
+  minio_data:
