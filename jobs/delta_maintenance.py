@@ -106,6 +106,7 @@ class DeltaMaintenanceJob:
         Returns 0 — the meaningful outcome is that it ran without error.
         """
         from delta.tables import DeltaTable
+
         logger.info(
             "Running VACUUM on %s (retention: %dh)", delta_path, self.retention_hours
         )
@@ -129,9 +130,8 @@ class DeltaMaintenanceJob:
         history(1) always returns the latest version reliably.
         """
         from delta.tables import DeltaTable
-        detail = self.spark.sql(
-            f"DESCRIBE DETAIL delta.`{delta_path}`"
-        ).collect()[0]
+
+        detail = self.spark.sql(f"DESCRIBE DETAIL delta.`{delta_path}`").collect()[0]
 
         dt = DeltaTable.forPath(self.spark, delta_path)
         history = dt.history(1).collect()[0]

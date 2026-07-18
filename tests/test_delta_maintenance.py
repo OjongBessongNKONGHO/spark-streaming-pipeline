@@ -13,6 +13,7 @@ What we're proving:
 - run() executes the full sequence and returns a report with before/after
   metrics showing the table version incremented
 """
+
 import os
 import pytest
 
@@ -23,8 +24,12 @@ os.environ.setdefault(
 
 from pyspark.sql import SparkSession
 from pyspark.sql.types import (
-    StructType, StructField, StringType, FloatType,
-    IntegerType, TimestampType,
+    StructType,
+    StructField,
+    StringType,
+    FloatType,
+    IntegerType,
+    TimestampType,
 )
 from datetime import datetime, timezone
 from delta import configure_spark_with_delta_pip
@@ -63,13 +68,15 @@ def delta_table(spark, tmp_path_factory):
     Creates a Delta table with multiple write batches — simulating
     the small-file accumulation that streaming micro-batches produce.
     """
-    schema = StructType([
-        StructField("city", StringType(), False),
-        StructField("country", StringType(), False),
-        StructField("temperature", FloatType(), False),
-        StructField("humidity", IntegerType(), False),
-        StructField("recorded_at", TimestampType(), False),
-    ])
+    schema = StructType(
+        [
+            StructField("city", StringType(), False),
+            StructField("country", StringType(), False),
+            StructField("temperature", FloatType(), False),
+            StructField("humidity", IntegerType(), False),
+            StructField("recorded_at", TimestampType(), False),
+        ]
+    )
 
     ts = datetime(2026, 6, 16, 10, 0, 0, tzinfo=timezone.utc)
     data = [
