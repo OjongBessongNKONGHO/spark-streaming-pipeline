@@ -16,6 +16,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow.providers.docker.operators.docker import DockerOperator
 from docker.types import Mount
+from jobs.maintenance_logger import log_maintenance_result
 import logging
 import os
 
@@ -137,6 +138,17 @@ def log_pipeline_run(**context):
     except Exception as e:
         logger.warning(f"Could not log pipeline run: {e}")
 
+def log_maintenance_run(**context):
+    """
+    Thin Airflow wrapper around log_maintenance_result.
+    All logic lives in jobs/maintenance_logger.py — testable without Airflow.
+    """
+    ti = context["ti"]
+    maintenance_result = ti.xcom_pull(
+        key="maintenance_result", task_ids="run_delta_maintenance"
+    )
+    status = log_maintenance_result(maintenance_result)
+    ti.xcom_push(key="maintenance_status", value=status)
 
 with DAG(
     dag_id="spark_streaming_batch_analysis",
@@ -183,9 +195,51 @@ with DAG(
         },
     )
 
+    delta_maintenance = DockerOperator(
+        task_id="run_delta_maintenance",
+        image="spark-streaming-consumer:latest",
+        api_version="auto",
+        auto_remove="success",
+        command="python3 -c \"\
+import json, os, sys; \
+sys.path.insert(0, '/app'); \
+from pyspark.sql import SparkSession; \
+from delta import configure_spark_with_delta_pip; \
+from jobs.delta_maintenance import DeltaMaintenanceJob; \
+builder = SparkSession.builder.appName('DeltaMaintenance') \
+    .master('local[2]') \
+    .config('spark.sql.extensions', 'io.delta.sql.DeltaSparkSessionExtension') \
+    .config('spark.sql.catalog.spark_catalog', 'org.apache.spark.sql.delta.catalog.DeltaCatalog'); \
+spark = configure_spark_with_delta_pip(builder).getOrCreate(); \
+job = DeltaMaintenanceJob(spark); \
+report = job.run(os.getenv('DELTA_LAKE_PATH', '/tmp/delta/weather')); \
+print(json.dumps(report)); \
+spark.stop() \
+\"",
+        docker_url="unix://var/run/docker.sock",
+        network_mode="spark-streaming-pipeline_default",
+        working_dir="/app",
+        mount_tmp_dir=False,
+        environment={
+            "DELTA_LAKE_PATH": os.getenv("DELTA_LAKE_PATH", ""),
+            "AWS_REGION": os.getenv("AWS_REGION", "eu-west-3"),
+            "AWS_DEFAULT_REGION": os.getenv("AWS_DEFAULT_REGION", "eu-west-3"),
+            "S3_BUCKET": os.getenv("S3_BUCKET", ""),
+            "AWS_S3_ENDPOINT": os.getenv("AWS_S3_ENDPOINT", ""),
+            "AWS_ACCESS_KEY_ID": os.getenv("AWS_ACCESS_KEY_ID", ""),
+            "AWS_SECRET_ACCESS_KEY": os.getenv("AWS_SECRET_ACCESS_KEY", ""),
+        },
+        do_xcom_push=True,
+    )
+
+    log_maintenance = PythonOperator(
+        task_id="log_maintenance_run",
+        python_callable=log_maintenance_run,
+    )
+
     log_run = PythonOperator(
         task_id="log_pipeline_run",
         python_callable=log_pipeline_run,
     )
 
-    check_kafka >> check_delta >> batch_analysis >> log_run
+    check_kafka >> check_delta >> batch_analysis >> delta_maintenance >> log_maintenance >> log_run
