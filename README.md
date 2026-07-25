@@ -351,7 +351,9 @@ Deploying to AWS surfaced five issues that never appeared in local Docker testin
 
 **Ojong Bessong NKONGHO**
 Data Engineering Student, BSc Computer Science, DSTI School of Engineering, Paris
+
 MSc Data Engineering and AI — September 2026.
+
 Seeking Data Engineering internship immediately and apprenticeship (September 2026)
 
 
