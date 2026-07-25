@@ -15,6 +15,7 @@ What we're proving:
 - function does not raise on any valid input
 - function does not raise when result is None
 """
+
 import logging
 import pytest
 from jobs.maintenance_logger import log_maintenance_result

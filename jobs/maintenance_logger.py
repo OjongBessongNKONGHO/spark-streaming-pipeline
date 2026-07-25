@@ -10,6 +10,7 @@ Responsibilities:
 - Log a human-readable summary of what the maintenance job did
 - Return a status string for the pipeline_runs log task
 """
+
 import logging
 
 logger = logging.getLogger(__name__)
